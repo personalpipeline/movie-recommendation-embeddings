@@ -18,23 +18,33 @@ def find_movie_index(title):
         return None
     return matches.index[0]
 
-def recommend_movies(movie_title, top_n=5):
+def recommend_movies(movie_title, top_n, method):
     idx = find_movie_index(movie_title)
 
     if idx is None:
-        print("Movie not found")
         return None
 
-    movie_vector = embedding_matrix[idx].reshape(1, -1)
-    similarities = cosine_similarity(movie_vector, embedding_matrix)[0]
+    query_vector = embedding_matrix[idx].reshape(1, -1)
 
-    similar_indices = similarities.argsort()[::-1][1:top_n + 1]
+    if method == "Cosine Similarity":
+        scores = cosine_similarity(query_vector, embedding_matrix)[0]
+        higher_is_better = True
+
+    elif method == "Dot Product (raw)":
+        scores = (embedding_matrix @ query_vector.T).flatten()
+        higher_is_better = True
+
+    elif method == "Euclidean Distance":
+        scores = euclidean_distances(query_vector, embedding_matrix)[0]
+        higher_is_better = False
+
+    # Sort correctly
+    if higher_is_better:
+        similar_indices = scores.argsort()[::-1][1 : top_n + 1]
+    else:
+        similar_indices = scores.argsort()[1 : top_n + 1]
 
     results = df.iloc[similar_indices][["title", "overview"]].copy()
-    results["similarity"] = similarities[similar_indices]
+    results["score"] = scores[similar_indices]
 
     return results
-
-if __name__ == "__main__":
-    recs = recommend_movies("Inception", top_n=5)
-    print(recs)
